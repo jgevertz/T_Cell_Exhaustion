@@ -2,7 +2,7 @@
 %                                                                       %   
 % T cell exhaustion model: impact of treatment protocol                 %
 % Authors: Irina Kareva and Jana Gevertz                                %
-% Last update: 1/28/2024                                                 %
+% Last update: 1/28/2024                                                %
 % - Model assumes T cells can be reversibly or irreversibly exhausted,  %
 %   driven by inflammation triggered by tumor killing. Drug only works  %
 %   on reversibly exhausted T cells.                                    %
@@ -34,40 +34,37 @@ dosenum_range = 2:step_size_dosenum:12;
 for Nsweep = 1:3
     %% Protocol Sweep 1: Over (p.dose1, p.intvlD1) space with dosenumD1 fixed
     if Nsweep == 1
-        p.dosenumD1 = 10;   % number of doses fixed
-        [tumor_end_size,tumor_erad_fails,AUC,Cmin,Cavg,FvsF2,Farea_overF2] = ...
+        p.dosenumD1 = 8;   % number of doses fixed
+        [tumor_end_size,tumor_erad_fails,AUC,Cmin,Cavg] = ...
             protocol_sweep(Nsweep,p,dose_range,freq_range,ICs,tmax,tStart1,0);
         make_plots(1,dose_range,freq_range,step_size_dose,step_size_freq,...
-            tumor_end_size,tumor_erad_fails,AUC,Cmin,Cavg,p.dosenumD1,...
-            FvsF2,Farea_overF2)
+            tumor_end_size,tumor_erad_fails,AUC,Cmin,Cavg,p.dosenumD1)
     
     %% Protocol Sweep 2: Over (p.dosenumD1, p.intvlD1) space with p.dose1 fixed
     elseif Nsweep == 2
-        p.dose1 = 3;   % dose fixed - default was 6
+        p.dose1 = 6;   % dose fixed - default was 6
         p.doseD1 = p.dose1*10^3/p.V1_1; % dose recalculations fron to ng/ml
-        [tumor_end_size2,tumor_erad_fails2,AUC2,Cmin2,Cavg2,FvsF2,Farea_overF2] = ...
+        [tumor_end_size2,tumor_erad_fails2,AUC2,Cmin2,Cavg2] = ...
             protocol_sweep(Nsweep,p,dosenum_range,freq_range,ICs,tmax,tStart1,0);
         make_plots(2,dosenum_range,freq_range,step_size_dosenum,step_size_freq,...
-            tumor_end_size2,tumor_erad_fails2,AUC2,Cmin2,Cavg2,p.dose1,...
-            FvsF2,Farea_overF2)
+            tumor_end_size2,tumor_erad_fails2,AUC2,Cmin2,Cavg2,p.dose1)
     
     %% Protocol Sweep 3: Over (p.dosenumD1, p.intvlD1) space with sum(p.dose1) fixed
     elseif Nsweep == 3
-        p.dose1 = 10;   % dose fixed 
+        p.dose1 = 10;   % dose fixed - default was 6
         p.doseD1 = p.dose1*10^3/p.V1_1; % dose recalculations fron to ng/ml
         total_drug = p.doseD1*5; % cumulative dose fixed 
-        [tumor_end_size3,tumor_erad_fails3,AUC3,Cmin3,Cavg3,FvsF2,Farea_overF2] = ...
+        [tumor_end_size3,tumor_erad_fails3,AUC3,Cmin3,Cavg3] = ...
             protocol_sweep(Nsweep,p,dosenum_range,freq_range,ICs,tmax,tStart1,total_drug);
         make_plots(3,dosenum_range,freq_range,step_size_dose,step_size_freq,...
-            tumor_end_size3,tumor_erad_fails3,AUC3,Cmin3,Cavg3,total_drug*(p.V1_1/10^3),...
-            FvsF2,Farea_overF2)
+            tumor_end_size3,tumor_erad_fails3,AUC3,Cmin3,Cavg3,total_drug*(p.V1_1/10^3))
     end
 end
 
-save protocol_sweep.mat dose_range freq_range dosenum_range total_drug ...
-    tumor_end_size3 tumor_erad_fails3 AUC3 Cmin3 Cavg3 FvsF2 Farea_overF2 ...
-    tumor_end_size tumor_erad_fails AUC Cmin Cavg ...  
-    tumor_end_size2 tumor_erad_fails2 AUC2 Cmin2 Cavg2 
+% save protocol_sweep_antigen.mat dose_range freq_range tumor_end_size ...
+%     tumor_erad_fails AUC Cmin Cavg dosenum_range tumor_end_size2 ...
+%     tumor_erad_fails2 AUC2 Cmin2 Cavg2 total_drug tumor_end_size3 ...
+%     tumor_erad_fails3 AUC3 Cmin3 Cavg3 
 
 %%%%%%%%% Functions%%%%%%%%%%%%%
 function [p, ICs] = set_parameters_ICs()
@@ -86,7 +83,11 @@ function [p, ICs] = set_parameters_ICs()
     ICs(5) = 0.1; % initial number of cytotoxic T cells
 
     %% PK parameters
- 
+
+    % 
+    p.antigen_F = 1;
+    p.missterm = 0;
+    
     p.V1_1  = 70; % ml/kg - mouse
     p.V2_1  = 33;% ml/kg - mouse
 
@@ -123,6 +124,7 @@ function [p, ICs] = set_parameters_ICs()
     p.xi2 = 1; % for ratio-dependent term, sclaing factor for y3 cell kill
     %p.d1  = 0.044; % normal death rate of y1
     p.d1  = 0.045; % normal death rate of y1
+    p.c1 = 0.001;
 
     p.g1  = 0.045; % rate of transition from y1->y2 when F>F1
 
@@ -132,20 +134,21 @@ function [p, ICs] = set_parameters_ICs()
     p.g2  = 0.01; % rate of return from y2 to y1 when F<F1
     p.g3  = 0.05; %rate of transition of y2->y3 when F>F2
     p.d3  = 0.01; %rate of death for terminally exhausted y3
-    p.b2 = 0; % will be defined after p.antigen_F
-
-    p.d4  = 0.01; %rate of cytokine/inflammation natural clearance
-    p.pd1 = 0.001; % rate of drug-mediated transition from y2 to y1
-    p.c1 = 0.001; % y1 expansion as a results of cell kill by y3
-
-    % Switch: inflammation model (0) or antigen model (1)
-    p.antigen_F = 0;
-
+    
     if p.antigen_F == 0
         p.b2  = 0.02; % rate of F expansion as a function of cell kill (measure of cytokines/inflammation)
     else
-        p.b2  = 2.7027e-4%% rate of F expansion as a function of antigen stimulation 
+        p.b2  = 2.7027e-4;%% rate of F expansion as a function of antigen stimulation 
     end
+
+    % if p.missterm ==0
+    %     p.c1 = 0;
+    % else
+    %     p.c1 = 0.011;
+    % end
+    p.d4  = 0.01; %rate of cytokine/inflammation natural clearance
+
+    p.pd1 = 0.001; % rate of drug-mediated transition from y2 to y1
 end
 
 function [tDose,cDose,ti] = set_protocol(p,T,tStart1)
@@ -238,13 +241,11 @@ function dydt=ode_model(t,y,p)
             dx1; dy1; dy2; dy3; dF]; % tumor and immune
 end
 
-function [tumor_end_size,tumor_erad_fails,AUC,Cmin,Cavg,FvsF2,Farea_overF2] = ...
+function [tumor_end_size,tumor_erad_fails,AUC,Cmin,Cavg] = ...
     protocol_sweep(Nsweep,p,first_range,second_range,ICs,tmax,tStart1,total_drug)
 
     tumor_end_size = zeros(length(first_range),length(second_range)); 
-    tumor_erad_fails = zeros(length(first_range),length(second_range)); 
-    FvsF2 = zeros(length(first_range),length(second_range));
-    Farea_overF2 = zeros(length(first_range),length(second_range)); 
+    tumor_erad_fails = zeros(length(first_range),length(second_range));  
     AUC = zeros(length(first_range),length(second_range)); 
     Cmin = zeros(length(first_range),length(second_range)); 
     Cavg = zeros(length(first_range),length(second_range)); 
@@ -272,12 +273,11 @@ function [tumor_end_size,tumor_erad_fails,AUC,Cmin,Cavg,FvsF2,Farea_overF2] = ..
             [tDose,cDose,ti] = set_protocol(p,tmax,tStart1);
             % Solve model and process data
             sol = solve_model(tDose,cDose,ICs,tmax,p,ti);
-            time = []; D1_p = []; x1 = [];  F = [];
+            time = []; D1_p = []; x1 = []; 
             for k = 1:size(sol,2)
                 time = [time sol{k}.x];
                 D1_p = [D1_p sol{k}.y(2,:)]; 
                 x1 = [x1 sol{k}.y(4,:)]; 
-                F = [F sol{k}.y(8,:)];
             end
             tumor_end_size(i,j) = x1(end);
             if tumor_end_size(i,j)<1 % eradication
@@ -285,24 +285,6 @@ function [tumor_end_size,tumor_erad_fails,AUC,Cmin,Cavg,FvsF2,Farea_overF2] = ..
             else % failure
                 tumor_erad_fails(i,j) = 0;
             end
-
-            Fepsilon = 0.;
-            if max(F)>(1+Fepsilon)*p.F2
-                FvsF2(i,j)=0; % over threshold
-            else 
-                FvsF2(i,j)=1; % under threshold
-            end
-            
-            Fover25 = zeros(size(F));
-            for k = 1:length(F)
-                if F(k)>p.F2
-                    Fover25(k) = F(k)-p.F2; 
-                else
-                    Fover25(k)=0;
-                end
-            end
-
-            Farea_overF2(i,j) = trapz(time',Fover25');
 
             for k=1:length(time)
                 if D1_p(k) < 10e-10
@@ -337,14 +319,6 @@ function [tumor_end_size,tumor_erad_fails,AUC,Cmin,Cavg,FvsF2,Farea_overF2] = ..
             fprintf('\tAUC = %f\n',AUC(i,j));
             fprintf('\tCmin = %f\n',Cmin(i,j));
             fprintf('\tCavg = %f\n',Cavg(i,j));
-
-            if FvsF2(i,j) == 0 % over threshold
-                fprintf('\tWent over F2 threshold since F2 = %f, max(F) = %f\n',...
-                    p.F2,max(F));
-            else % under threshold
-                fprintf('\tStayed under F2 threshold since F2 = %f, max(F) = %f\n',...
-                    p.F2,max(F)); 
-            end
         end
     end
 end
@@ -389,8 +363,7 @@ end
 
 
 function [] = make_plots(Nsweep,first_range,second_range,first_step_size,...
-    second_step_size,tumor_end_size,tumor_erad_fails,AUC,Cmin,Cavg,...
-    for_title,FvsF2,Farea_overF2)
+    second_step_size,tumor_end_size,tumor_erad_fails,AUC,Cmin,Cavg,for_title)
 
     x_lb = first_range(1)-0.5*first_step_size;
     x_ub = first_range(end)+0.5*first_step_size;
@@ -421,9 +394,9 @@ function [] = make_plots(Nsweep,first_range,second_range,first_step_size,...
         ylabel('Spacing between doses (days)');
         title(['End Tumor Volume: Total Dose of ' num2str(for_title)]);
     end
-    fname = ['tumor_size' num2str(Nsweep)]; 
-    saveas(gcf,[fname,'.fig']);
-    saveas(gcf,[fname,'.png']);
+    % fname = ['tumor_size_antigen' num2str(Nsweep)]; 
+    % saveas(gcf,[fname,'.fig']);
+    % saveas(gcf,[fname,'.png']);
 
     % Binary tumor response, if varies (red = failed, green = eradicated)
     bin_min = min(tumor_erad_fails,[],'all');
@@ -453,9 +426,9 @@ function [] = make_plots(Nsweep,first_range,second_range,first_step_size,...
             ylabel('Spacing between doses (days)');
             title(['Treatment Response: Total Dose of ' num2str(for_title)]);
         end
-        fname = ['tumor_binary' num2str(Nsweep)]; 
-        saveas(gcf,[fname,'.fig']);
-        saveas(gcf,[fname,'.png']);
+        % fname = ['tumor_binary_antigen' num2str(Nsweep)]; 
+        % saveas(gcf,[fname,'.fig']);
+        % saveas(gcf,[fname,'.png']);
     end
 
     % AUC
@@ -480,9 +453,9 @@ function [] = make_plots(Nsweep,first_range,second_range,first_step_size,...
         ylabel('Spacing between doses (days)');
         title(['AUC: Total Dose of ' num2str(for_title)]);
     end
-    fname = ['AUC' num2str(Nsweep)]; 
-    saveas(gcf,[fname,'.fig']);
-    saveas(gcf,[fname,'.png']);
+    % fname = ['AUC_antigen' num2str(Nsweep)]; 
+    % saveas(gcf,[fname,'.fig']);
+    % saveas(gcf,[fname,'.png']);
 
     % Cmin
     figure; hold on;
@@ -507,9 +480,9 @@ function [] = make_plots(Nsweep,first_range,second_range,first_step_size,...
         ylabel('Spacing between doses (days)');
         title(['C_m_i_n: Total Dose of ' num2str(for_title)]);
     end
-    fname = ['Cmin' num2str(Nsweep)]; 
-    saveas(gcf,[fname,'.fig']);
-    saveas(gcf,[fname,'.png']);
+    % fname = ['Cmin_antigen' num2str(Nsweep)]; 
+    % saveas(gcf,[fname,'.fig']);
+    % saveas(gcf,[fname,'.png']);
 
     % Cavg
     figure; hold on;
@@ -533,67 +506,7 @@ function [] = make_plots(Nsweep,first_range,second_range,first_step_size,...
         ylabel('Spacing between doses (days)');
         title(['C_a_v_g: Total Dose of ' num2str(for_title)]);
     end
-    fname = ['Cavg' num2str(Nsweep)]; 
-    saveas(gcf,[fname,'.fig']);
-    saveas(gcf,[fname,'.png']);
-
-    % Binary response: did F surpass F2? (red = yes, green = no)
-    bin_minF = min(FvsF2,[],'all');
-    bin_maxF = max(FvsF2,[],'all');
-    if bin_minF ~= bin_maxF 
-        figure; hold on;
-        imagesc(first_range,second_range,FvsF2'); 
-        hold off;
-        xlim([x_lb,x_ub]);
-        ylim([y_lb,y_ub]);
-        xticks(first_range);
-        yticks(second_range);
-        colormap(map_binary)
-        cbh = colorbar(); 
-        set(cbh, 'YTick', [0, 1], ...
-            'YTickLabel', {'Over F2', 'Below'})    
-        if Nsweep == 1
-            xlabel('Dose'); 
-            ylabel('Spacing between doses (days)');
-            title(['Inflammation: ' num2str(for_title) ' Doses Administered']);   
-        elseif Nsweep == 2
-            xlabel('Number of Doses'); 
-            ylabel('Spacing between doses (days)');
-            title(['Inflammation: Dose of ' num2str(for_title)]);
-        elseif Nsweep == 3
-            xlabel('Number of Doses'); 
-            ylabel('Spacing between doses (days)');
-            title(['Inflammation: Total Dose of ' num2str(for_title)]);
-        end
-        fname = ['F_binary' num2str(Nsweep)]; 
-        saveas(gcf,[fname,'.fig']);
-        saveas(gcf,[fname,'.png']);
-    end
-
-    % Area above p.F2
-    figure; hold on;
-    imagesc(first_range,second_range,Farea_overF2'); 
-    hold off;
-    xlim([x_lb,x_ub]);
-    ylim([y_lb,y_ub]);
-    xticks(first_range);
-    yticks(second_range);
-    colorbar(); 
-    set(gca,'ColorScale','log')
-    if Nsweep == 1
-        xlabel('Dose'); 
-        ylabel('Spacing between doses (days)');
-        title(['Area over F2: ' num2str(for_title) ' Doses Administered']); 
-    elseif Nsweep == 2
-        xlabel('Number of Doses'); 
-        ylabel('Spacing between doses (days)');
-        title(['Area over F2: Dose of ' num2str(for_title)]);
-    elseif Nsweep == 3
-        xlabel('Number of Doses'); 
-        ylabel('Spacing between doses (days)');
-        title(['Area over F2: Total Dose of ' num2str(for_title)]);
-    end
-    fname = ['Area_over_F2' num2str(Nsweep)]; 
-    saveas(gcf,[fname,'.fig']);
-    saveas(gcf,[fname,'.png']);
+    % fname = ['Cavg_antigen' num2str(Nsweep)]; 
+    % saveas(gcf,[fname,'.fig']);
+    % saveas(gcf,[fname,'.png']);
 end
