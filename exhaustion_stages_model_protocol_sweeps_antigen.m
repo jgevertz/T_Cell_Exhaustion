@@ -61,10 +61,10 @@ for Nsweep = 1:3
     end
 end
 
-% save protocol_sweep_antigen.mat dose_range freq_range tumor_end_size ...
-%     tumor_erad_fails AUC Cmin Cavg dosenum_range tumor_end_size2 ...
-%     tumor_erad_fails2 AUC2 Cmin2 Cavg2 total_drug tumor_end_size3 ...
-%     tumor_erad_fails3 AUC3 Cmin3 Cavg3 
+save protocol_sweep_antigen.mat dose_range freq_range tumor_end_size ...
+    tumor_erad_fails AUC Cmin Cavg dosenum_range tumor_end_size2 ...
+    tumor_erad_fails2 AUC2 Cmin2 Cavg2 total_drug tumor_end_size3 ...
+    tumor_erad_fails3 AUC3 Cmin3 Cavg3 
 
 %%%%%%%%% Functions%%%%%%%%%%%%%
 function [p, ICs] = set_parameters_ICs()
@@ -394,9 +394,9 @@ function [] = make_plots(Nsweep,first_range,second_range,first_step_size,...
         ylabel('Spacing between doses (days)');
         title(['End Tumor Volume: Total Dose of ' num2str(for_title)]);
     end
-    % fname = ['tumor_size_antigen' num2str(Nsweep)]; 
-    % saveas(gcf,[fname,'.fig']);
-    % saveas(gcf,[fname,'.png']);
+    fname = ['tumor_size_antigen' num2str(Nsweep)]; 
+    saveas(gcf,[fname,'.fig']);
+    saveas(gcf,[fname,'.png']);
 
     % Binary tumor response, if varies (red = failed, green = eradicated)
     bin_min = min(tumor_erad_fails,[],'all');
@@ -426,9 +426,9 @@ function [] = make_plots(Nsweep,first_range,second_range,first_step_size,...
             ylabel('Spacing between doses (days)');
             title(['Treatment Response: Total Dose of ' num2str(for_title)]);
         end
-        % fname = ['tumor_binary_antigen' num2str(Nsweep)]; 
-        % saveas(gcf,[fname,'.fig']);
-        % saveas(gcf,[fname,'.png']);
+        fname = ['tumor_binary_antigen' num2str(Nsweep)]; 
+        saveas(gcf,[fname,'.fig']);
+        saveas(gcf,[fname,'.png']);
     end
 
     % AUC
@@ -453,9 +453,9 @@ function [] = make_plots(Nsweep,first_range,second_range,first_step_size,...
         ylabel('Spacing between doses (days)');
         title(['AUC: Total Dose of ' num2str(for_title)]);
     end
-    % fname = ['AUC_antigen' num2str(Nsweep)]; 
-    % saveas(gcf,[fname,'.fig']);
-    % saveas(gcf,[fname,'.png']);
+    fname = ['AUC_antigen' num2str(Nsweep)]; 
+    saveas(gcf,[fname,'.fig']);
+    saveas(gcf,[fname,'.png']);
 
     % Cmin
     figure; hold on;
@@ -480,9 +480,9 @@ function [] = make_plots(Nsweep,first_range,second_range,first_step_size,...
         ylabel('Spacing between doses (days)');
         title(['C_m_i_n: Total Dose of ' num2str(for_title)]);
     end
-    % fname = ['Cmin_antigen' num2str(Nsweep)]; 
-    % saveas(gcf,[fname,'.fig']);
-    % saveas(gcf,[fname,'.png']);
+    fname = ['Cmin_antigen' num2str(Nsweep)]; 
+    saveas(gcf,[fname,'.fig']);
+    saveas(gcf,[fname,'.png']);
 
     % Cavg
     figure; hold on;
@@ -506,7 +506,7 @@ function [] = make_plots(Nsweep,first_range,second_range,first_step_size,...
         ylabel('Spacing between doses (days)');
         title(['C_a_v_g: Total Dose of ' num2str(for_title)]);
     end
-    % fname = ['Cavg_antigen' num2str(Nsweep)]; 
-    % saveas(gcf,[fname,'.fig']);
-    % saveas(gcf,[fname,'.png']);
+    fname = ['Cavg_antigen' num2str(Nsweep)]; 
+    saveas(gcf,[fname,'.fig']);
+    saveas(gcf,[fname,'.png']);
 end
